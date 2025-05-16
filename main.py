@@ -8,8 +8,8 @@ import os
 app = FastAPI()
 
 # === Bybit 테스트넷 API 키 설정 ===
-BYBIT_API_KEY = os.getenv("BYBIT_API_KEY") or "YOUR_TESTNET_API_KEY"
-BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET") or "YOUR_TESTNET_API_SECRET"
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY")
+BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET")
 BYBIT_URL = "https://api-testnet.bybit.com"  # 테스트넷 전용 URL
 
 # === 공통 서명 생성 함수 ===
@@ -19,7 +19,7 @@ def sign(params, secret):
     return hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
 
 # === 시장가 주문 함수 ===
-def place_order(side: str, symbol="WALUSDT", qty="5"):
+def place_order(side: str, symbol="WALUSDT", qty="1"):
     url = BYBIT_URL + "/v5/order/create"
     timestamp = str(int(time.time() * 1000))
     params = {
@@ -58,16 +58,16 @@ async def walrus(request: Request):
 
         if order_id == "Long":
             print(f"✅ [롱 진입 요청] {symbol} @ {price}")
-            # place_order(side="Buy", symbol=symbol)
+            place_order(side="Buy", symbol=symbol)
         elif order_id == "Short":
             print(f"✅ [숏 진입 요청] {symbol} @ {price}")
-            # place_order(side="Sell", symbol=symbol)
+            place_order(side="Sell", symbol=symbol)
         elif order_id == "Long Exit":
             print(f"🔔 [롱 종료 요청] {symbol} @ {price}")
-            # place_order(side="Sell", symbol=symbol)
+            place_order(side="Sell", symbol=symbol)
         elif order_id == "Short Exit":
             print(f"🔔 [숏 종료 요청] {symbol} @ {price}")
-            # place_order(side="Buy", symbol=symbol)
+            place_order(side="Buy", symbol=symbol)
         else:
             print(f"⚠️ [경고] 인식되지 않은 ID: {order_id}")
 
