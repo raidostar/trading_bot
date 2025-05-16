@@ -1,31 +1,72 @@
 from fastapi import FastAPI, Request
+import requests
+import time
+import hmac
+import hashlib
+import os
 
 app = FastAPI()
 
+# === Bybit 테스트넷 API 키 설정 ===
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY") or "YOUR_TESTNET_API_KEY"
+BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET") or "YOUR_TESTNET_API_SECRET"
+BYBIT_URL = "https://api-testnet.bybit.com"  # 테스트넷 전용 URL
+
+# === 공통 서명 생성 함수 ===
+def sign(params, secret):
+    sorted_params = sorted(params.items())
+    query = "&".join([f"{k}={v}" for k, v in sorted_params])
+    return hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+
+# === 시장가 주문 함수 ===
+def place_order(side: str, symbol="WALUSDT", qty="5"):
+    url = BYBIT_URL + "/v5/order/create"
+    timestamp = str(int(time.time() * 1000))
+    params = {
+        "apiKey": BYBIT_API_KEY,
+        "timestamp": timestamp,
+        "category": "linear",
+        "symbol": symbol,
+        "side": side,  # "Buy" or "Sell"
+        "orderType": "Market",
+        "qty": qty,
+        "timeInForce": "IOC",
+    }
+    params["sign"] = sign(params, BYBIT_API_SECRET)
+
+    try:
+        res = requests.post(url, params=params)
+        print("📦 주문 응답:", res.status_code, res.text)
+    except Exception as e:
+        print("❌ 주문 실패:", str(e))
+
+# === FastAPI Webhook 엔드포인트 ===
 @app.post("/walrus")
 async def walrus(request: Request):
     data = await request.json()
     print("📩 Webhook 수신됨:", data)
 
-        # walusdt 웹훅 처리 예시
-    if data.get("id") == "Long":
-        print("✅ [알림] 📈 WALUSDT 롱 포지션 진입 요청 감지! 가격: ", data.get("price", "N/A"))
-        # place_order(side="Buy")
+    symbol = data.get("symbol", "WALUSDT")
+    price = data.get("price", "N/A")
+    order_id = data.get("id")
+
+    if order_id == "Long":
+        print(f"✅ [롱 진입 요청] {symbol} @ {price}")
+        #place_order(side="Buy", symbol=symbol)
     
-    elif data.get("id") == "Short":
-        print("✅ [알림] 📉 WALUSDT 숏 포지션 진입 요청 감지! 가격: ", data.get("price", "N/A"))
-        # place_order(side="Sell")
+    elif order_id == "Short":
+        print(f"✅ [숏 진입 요청] {symbol} @ {price}")
+        #place_order(side="Sell", symbol=symbol)
     
-    elif data.get("id") == "Long Exit":
-        print("🔔 [알림] 🟡 WALUSDT 롱 포지션 종료 조건 충족! 가격: ", data.get("price", "N/A"))
-        # close_position(side="Sell")
+    elif order_id == "Long Exit":
+        print(f"🔔 [롱 종료 요청] {symbol} @ {price}")
+        #place_order(side="Sell", symbol=symbol)
     
-    elif data.get("id") == "Short Exit":
-        print("🔔 [알림] 🔴 WALUSDT 숏 포지션 종료 조건 충족! 가격: ", data.get("price", "N/A"))
-        # close_position(side="Buy")
+    elif order_id == "Short Exit":
+        print(f"🔔 [숏 종료 요청] {symbol} @ {price}")
+        #place_order(side="Buy", symbol=symbol)
     
     else:
-        print("⚠️ [경고] 인식되지 않은 ID 수신: ", data.get("id"))
-    
+        print(f"⚠️ [경고] 인식되지 않은 ID: {order_id}")
 
     return {"status": "ok"}
