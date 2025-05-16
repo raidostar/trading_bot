@@ -44,13 +44,20 @@ def place_order(side: str, symbol="WALUSDT", qty="5"):
 @app.post("/walrus")
 async def walrus(request: Request):
     try:
-        body = await request.body()
-        if not body:
-            print("⚠️ 빈 본문 수신됨 (본문 없음)")
-            return {"error": "empty body"}
+        ua = request.headers.get("user-agent", "")
+        
+        # 바디 확인
+        body_bytes = await request.body()
+        body_str = body_bytes.decode("utf-8").strip()
 
-        data = await request.json()
-        print("📩 Webhook 수신됨:", data)
+        # 필터: 바디 비어 있거나 JSON 아님 → 무시
+        if not body_str or not body_str.startswith("{"):
+            print(f"⚠️ 무시된 요청: UA={ua}, Body='{body_str}'")
+            return {"status": "ignored-empty"}
+
+        # JSON 디코딩 시도
+        data = json.loads(body_str)
+        print("📩 유효한 Webhook 수신됨:", data)
 
         symbol = data.get("symbol", "WALUSDT")
         price = data.get("price", "N/A")
