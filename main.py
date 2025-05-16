@@ -43,30 +43,36 @@ def place_order(side: str, symbol="WALUSDT", qty="5"):
 # === FastAPI Webhook 엔드포인트 ===
 @app.post("/walrus")
 async def walrus(request: Request):
-    data = await request.json()
-    print("📩 Webhook 수신됨:", data)
+    try:
+        body = await request.body()
+        if not body:
+            print("⚠️ 빈 본문 수신됨 (본문 없음)")
+            return {"error": "empty body"}
 
-    symbol = data.get("symbol", "WALUSDT")
-    price = data.get("price", "N/A")
-    order_id = data.get("id")
+        data = await request.json()
+        print("📩 Webhook 수신됨:", data)
 
-    if order_id == "Long":
-        print(f"✅ [롱 진입 요청] {symbol} @ {price}")
-        #place_order(side="Buy", symbol=symbol)
-    
-    elif order_id == "Short":
-        print(f"✅ [숏 진입 요청] {symbol} @ {price}")
-        #place_order(side="Sell", symbol=symbol)
-    
-    elif order_id == "Long Exit":
-        print(f"🔔 [롱 종료 요청] {symbol} @ {price}")
-        #place_order(side="Sell", symbol=symbol)
-    
-    elif order_id == "Short Exit":
-        print(f"🔔 [숏 종료 요청] {symbol} @ {price}")
-        #place_order(side="Buy", symbol=symbol)
-    
-    else:
-        print(f"⚠️ [경고] 인식되지 않은 ID: {order_id}")
+        symbol = data.get("symbol", "WALUSDT")
+        price = data.get("price", "N/A")
+        order_id = data.get("id")
 
-    return {"status": "ok"}
+        if order_id == "Long":
+            print(f"✅ [롱 진입 요청] {symbol} @ {price}")
+            # place_order(side="Buy", symbol=symbol)
+        elif order_id == "Short":
+            print(f"✅ [숏 진입 요청] {symbol} @ {price}")
+            # place_order(side="Sell", symbol=symbol)
+        elif order_id == "Long Exit":
+            print(f"🔔 [롱 종료 요청] {symbol} @ {price}")
+            # place_order(side="Sell", symbol=symbol)
+        elif order_id == "Short Exit":
+            print(f"🔔 [숏 종료 요청] {symbol} @ {price}")
+            # place_order(side="Buy", symbol=symbol)
+        else:
+            print(f"⚠️ [경고] 인식되지 않은 ID: {order_id}")
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        print("❌ 요청 처리 중 오류:", str(e))
+        return {"error": str(e)}
